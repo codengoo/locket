@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using static locket.DTOs.AuthDto;
 
 namespace locket.Controllers
 {
@@ -30,6 +31,14 @@ namespace locket.Controllers
         public IActionResult TestApiAuth()
         {
             return Ok("Ok auth man");
+        }
+
+        [HttpPost("signin")]
+        [Route("signin")]
+        public IActionResult SignInByUsername([FromBody] ISignInByUsername body)
+        {
+            throw new Exception("Do an hai");
+            //return Ok();
         }
 
         [HttpPost]

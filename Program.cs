@@ -7,13 +7,23 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using locket.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = (new AppConfig(builder.Configuration)).Option;
 
 // Add MVC 
-builder.Services.AddMvc();
+builder.Services.AddControllers();
 builder.Services.AddSingleton<AppConfig>();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        return new BadRequestObjectResult(
+            new ApiResponse("Invalid parameters", null, new SerializableError(context.ModelState))
+        );
+    };
+});
 
 // Add Context
 builder.Services.AddDbContext<LocketDbContext>(option => option.UseNpgsql(config.Database.ConnectionString));
@@ -47,12 +57,13 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 
+// Custom Try catch
 
 var app = builder.Build();
 
 // Add custom middlewares
 //app.UseMiddleware<JwtCookieMiddleware>();
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Add middleware to the request pipeline
 app.UseAuthentication();

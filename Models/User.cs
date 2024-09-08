@@ -1,4 +1,4 @@
-﻿namespace locket.DTOs
+﻿namespace locket.Models
 {
     public class User
     {

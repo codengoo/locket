@@ -1,4 +1,4 @@
-﻿using locket.DTOs;
+﻿using locket.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
