@@ -1,8 +1,11 @@
 ﻿using locket.Helpers;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 namespace locket.Controllers
@@ -33,7 +36,7 @@ namespace locket.Controllers
         [Route("login")]
         public IActionResult LoginByUsername()
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appConfig.Option.JWTKey));
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appConfig.Option.Authentication.JWTKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
@@ -44,6 +47,30 @@ namespace locket.Controllers
             var jwt = tokenHandler.WriteToken(token);
 
             return Ok(new { token = jwt });
+        }
+
+        [HttpGet("google")]
+        public IActionResult SignInGoogle()
+        {
+            var authenticationProperties = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action("GoogleResponse")
+            };
+            return Challenge(authenticationProperties, "Google");
+        }
+
+        [HttpGet("google-response")]
+        public async Task<IActionResult> GoogleResponse()
+        {
+            var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            if (!authenticateResult.Succeeded)
+                return BadRequest("Google authentication failed.");
+
+            var userId = authenticateResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            //var jwtToken = GenerateJwtToken(userId);
+
+            return Ok(new { Token = userId });
         }
     }
 }
