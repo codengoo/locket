@@ -14,6 +14,12 @@
             public string ClientID { get; set; } = String.Empty;
         }
 
+        public class KafkaOption
+        {
+            public string Topic { get; set; } = String.Empty;
+            public string BootstrapServers { get; set; } = String.Empty;
+        }
+
         public class DatabaseOption
         {
             public string ConnectionString { get; set; } = String.Empty;
@@ -22,6 +28,7 @@
         public const string AppConfiguration = "AppConfiguration";
         public AuthenticationOption Authentication { get; set; } = new AuthenticationOption();
         public DatabaseOption Database { get; set; } = new DatabaseOption();
+        public KafkaOption Kafka { get; set; } = new KafkaOption();
     }
 
     public class AppConfig

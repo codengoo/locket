@@ -9,14 +9,17 @@ using locket.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using locket.Services;
-using locket.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = (new AppConfig(builder.Configuration)).Option;
 
-// Add MVC 
+// ADD Service 
+builder.Services.AddScoped<KafkaProducerService>();
+builder.Services.AddHostedService<KafkaConsumerService>();
+
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
+
 builder.Services.AddControllers();
 builder.Services.AddSingleton<AppConfig>();
 builder.Services.AddHttpClient();
@@ -69,6 +72,7 @@ app.UseMiddleware<JwtCookieMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 
 // Add middleware to the request pipeline
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

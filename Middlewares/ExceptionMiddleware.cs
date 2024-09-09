@@ -11,15 +11,14 @@ namespace locket.Middlewares
 
         public async Task InvokeAsync(HttpContext context)
         {
-            await _next(context);
-            //try
-            //{
-            //    await _next(context);
-            //}
-            //catch (Exception ex)
-            //{
-            //    await HandleExceptionAsync(context, ex);
-            //}
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionAsync(context, ex);
+            }
         }
 
         private static Task HandleExceptionAsync(HttpContext context, Exception ex)
