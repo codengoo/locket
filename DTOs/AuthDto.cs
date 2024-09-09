@@ -27,5 +27,10 @@ namespace locket.DTOs
             [Required]
             public string Password { get; set; }
         }
+
+        public class GoogleLoginRequest
+        {
+            public string IdToken { get; set; }
+        }
     }
 }

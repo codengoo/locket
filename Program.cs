@@ -9,6 +9,7 @@ using locket.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using locket.Services;
+using locket.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = (new AppConfig(builder.Configuration)).Option;
@@ -18,6 +19,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddControllers();
 builder.Services.AddSingleton<AppConfig>();
+builder.Services.AddHttpClient();
 
 // Config DTO validation
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -36,8 +38,7 @@ builder.Services.AddDbContext<LocketDbContext>(option => option.UseNpgsql(config
 // Add JWT
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    //options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -57,12 +58,10 @@ builder.Services.AddAuthentication(options =>
         options.ClientId = config.Authentication.Google.ClientID;
         options.ClientSecret = config.Authentication.Google.ClientSecret;
         options.CallbackPath = new PathString("/auth/google-redirect");
+        options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     });
 
 builder.Services.AddAuthorization();
-
-// Custom Try catch
-
 var app = builder.Build();
 
 // Add custom middlewares

@@ -11,20 +11,31 @@ namespace locket.Helpers
         public string? Refresh { get; set; }
     }
 
-    public class JWTPayload
+    public class IJWTPayload
     {
         public string UserID { get; set; }
+        public string Username { get; set; }
     }
+
+    public class JWTClaimType
+    {
+        public static readonly string Username = "username";
+        public static readonly string UserID = "userID";
+    }
+    
     public class JWTHandler
     {
-        private static Claim[] generateClaim(JWTPayload payload)
+
+
+        private static Claim[] generateClaim(IJWTPayload payload)
         {
             return [
-                new Claim("userID", payload.UserID)
+                new Claim(JWTClaimType.UserID, payload.UserID),
+                new Claim(JWTClaimType.Username, payload.Username)
             ];
         }
 
-        public static IJWTResponse generateToken(JWTPayload payload, string secretKey)
+        public static IJWTResponse generateToken(IJWTPayload payload, string secretKey)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
@@ -43,7 +54,7 @@ namespace locket.Helpers
             };
         }
 
-        public static string parseToken(string secretKey, string token)
+        public static IJWTPayload parseToken(string secretKey, string token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
@@ -56,8 +67,15 @@ namespace locket.Helpers
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = securityKey,
             };
-            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out _);
-            return principal.ToString();
+            ClaimsPrincipal principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out _);
+
+            IJWTPayload response = new()
+            {
+                UserID = principal.FindFirstValue(JWTClaimType.UserID) ?? String.Empty,
+                Username = principal.FindFirstValue(JWTClaimType.Username) ?? String.Empty,
+            };
+            return response;
+
         }
     }
 }

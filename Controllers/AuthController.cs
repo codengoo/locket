@@ -1,4 +1,5 @@
 ﻿using locket.Helpers;
+using locket.Models;
 using locket.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -6,7 +7,9 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Http;
 using System.Security.Claims;
+using System.Security.Cryptography.X509Certificates;
 using static locket.DTOs.AuthDto;
 
 namespace locket.Controllers
@@ -17,6 +20,13 @@ namespace locket.Controllers
     {
         private readonly AppConfig _appConfig = appConfig;
         private readonly AuthService _authService = authService;
+
+        private OkObjectResult GenerateSigningKey(IJWTPayload payload)
+        {
+            IJWTResponse response = JWTHandler.generateToken(payload, _appConfig.Option.Authentication.JWTKey);
+            CookieResponse.AddTokenCookie(Response, response.Token);
+            return Ok(new ApiResponse<IJWTResponse>(response));
+        }
 
         [Authorize]
         [HttpGet("private")]
@@ -35,13 +45,12 @@ namespace locket.Controllers
             }
             else
             {
-                JWTPayload payload = new()
+                IJWTPayload payload = new()
                 {
-                    UserID = UserID.ToString()!
+                    UserID = UserID.ToString()!,
+                    Username = ""
                 };
-                IJWTResponse response = JWTHandler.generateToken(payload, _appConfig.Option.Authentication.JWTKey);
-                CookieResponse.AddTokenCookie(Response, response.Token);
-                return Ok(new ApiResponse<IJWTResponse>(response));
+                return GenerateSigningKey(payload);
             }
         }
 
@@ -94,13 +103,12 @@ namespace locket.Controllers
                 return Ok(new ApiResponse<IReturnSignInByUser>(response));
             } else
             {
-                JWTPayload payload = new()
+                IJWTPayload payload = new()
                 {
-                    UserID = guid.ToString()!
+                    UserID = guid.ToString()!,
+                    Username = ""
                 };
-                IJWTResponse response = JWTHandler.generateToken(payload, _appConfig.Option.Authentication.JWTKey);
-                CookieResponse.AddTokenCookie(Response, response.Token);
-                return Ok(new ApiResponse<IJWTResponse>(response));
+                return GenerateSigningKey(payload);
             }
         }
     }

@@ -6,9 +6,11 @@
 
         public async Task InvokeAsync(HttpContext context)
         {
+            Console.WriteLine(context.Request.Headers.Authorization);
             if (context.Request.Cookies.ContainsKey("token"))
             {
                 var token = context.Request.Cookies["token"];
+                Console.WriteLine(token);
                 if (!String.IsNullOrEmpty(token))
                 {
                     context.Request.Headers.Append("Authorization", $"Bearer {token}");
