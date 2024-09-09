@@ -8,19 +8,24 @@ using System.Text;
 using locket.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using locket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = (new AppConfig(builder.Configuration)).Option;
 
 // Add MVC 
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddControllers();
 builder.Services.AddSingleton<AppConfig>();
+
+// Config DTO validation
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
         return new BadRequestObjectResult(
-            new ApiResponse("Invalid parameters", null, new SerializableError(context.ModelState))
+            new ApiResponse(null, "Invalid parameters", new SerializableError(context.ModelState))
         );
     };
 });
@@ -31,19 +36,12 @@ builder.Services.AddDbContext<LocketDbContext>(option => option.UseNpgsql(config
 // Add JWT
 builder.Services.AddAuthentication(options =>
 {
-    //options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    //options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    //options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
 })
     .AddCookie()
-    .AddGoogle(options =>
-    {
-        options.ClientId = config.Authentication.Google.ClientID;
-        options.ClientSecret = config.Authentication.Google.ClientSecret;
-        options.CallbackPath = new PathString("/auth/google-redirect");
-    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -53,6 +51,12 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config.Authentication.JWTKey))
         };
+    })
+    .AddGoogle(options =>
+    {
+        options.ClientId = config.Authentication.Google.ClientID;
+        options.ClientSecret = config.Authentication.Google.ClientSecret;
+        options.CallbackPath = new PathString("/auth/google-redirect");
     });
 
 builder.Services.AddAuthorization();
@@ -62,7 +66,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Add custom middlewares
-//app.UseMiddleware<JwtCookieMiddleware>();
+app.UseMiddleware<JwtCookieMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 
 // Add middleware to the request pipeline

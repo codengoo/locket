@@ -1,61 +1,61 @@
 ﻿using locket.Helpers;
+using locket.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using static locket.DTOs.AuthDto;
 
 namespace locket.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthController(AppConfig appConfig, AuthService authService) : ControllerBase
     {
-        private readonly AppConfig _appConfig;
+        private readonly AppConfig _appConfig = appConfig;
+        private readonly AuthService _authService = authService;
 
-        public AuthController(AppConfig appConfig) { _appConfig = appConfig; }
-
-        [HttpGet]
-        public IActionResult TestApi()
-        {
-            return Ok("Ok man");
-        }
-
-        [HttpGet]
         [Authorize]
-        [Route("private")]
+        [HttpGet("private")]
         public IActionResult TestApiAuth()
         {
             return Ok("Ok auth man");
         }
 
-        [HttpPost("signin")]
-        [Route("signin")]
-        public IActionResult SignInByUsername([FromBody] ISignInByUsername body)
+        [HttpPost("login")]
+        public async Task<IActionResult> LoginByUsername([FromBody] ILoginByUsername body)
         {
-            throw new Exception("Do an hai");
-            //return Ok();
+            Guid? UserID = await _authService.FindUserByUsername(body.Username, body.Password);
+            if (UserID == null)
+            {
+                throw new Exception("Invalid password");
+            }
+            else
+            {
+                JWTPayload payload = new()
+                {
+                    UserID = UserID.ToString()!
+                };
+                IJWTResponse response = JWTHandler.generateToken(payload, _appConfig.Option.Authentication.JWTKey);
+                CookieResponse.AddTokenCookie(Response, response.Token);
+                return Ok(new ApiResponse<IJWTResponse>(response));
+            }
         }
 
-        [HttpPost]
-        [Route("login")]
-        public IActionResult LoginByUsername()
+        [HttpPost("signin")]
+        public async Task<IActionResult> SignInByUsername([FromBody] ISignInByUsername body)
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appConfig.Option.Authentication.JWTKey));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            Guid Uid = await _authService.InsertUserByUsername(body.Username, body.Password);
 
-            var token = new JwtSecurityToken(
-                expires: DateTime.Now.AddMinutes(30),
-                signingCredentials: credentials);
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwt = tokenHandler.WriteToken(token);
-
-            return Ok(new { token = jwt });
+            IReturnSignInByUser response = new()
+            {
+                Uid = Uid,
+                Username = body.Username
+            };
+            return Ok(new ApiResponse<IReturnSignInByUser>(response));
         }
 
         [HttpGet("google")]
@@ -65,7 +65,7 @@ namespace locket.Controllers
             {
                 RedirectUri = Url.Action("GoogleResponse")
             };
-            return Challenge(authenticationProperties, "Google");
+            return Challenge(authenticationProperties, GoogleDefaults.AuthenticationScheme);
         }
 
         [HttpGet("google-response")]
@@ -74,12 +74,34 @@ namespace locket.Controllers
             var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             if (!authenticateResult.Succeeded)
-                return BadRequest("Google authentication failed.");
+                throw new Exception("Google authentication failed.");
 
-            var userId = authenticateResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            //var jwtToken = GenerateJwtToken(userId);
+            string googleID = authenticateResult.Principal.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            string username = authenticateResult.Principal.FindFirstValue(ClaimTypes.Email) ?? googleID;
+            string? displayName = authenticateResult.Principal.FindFirstValue(ClaimTypes.Name);
 
-            return Ok(new { Token = userId });
+            Guid? guid = await _authService.FindUserByGoogleID(googleID);
+            if (guid == null)
+            {
+                Guid Uid = await _authService.InsertUserByUsername(username, null, googleID, displayName);
+
+                IReturnSignInByUser response = new()
+                {
+                    Uid = Uid,
+                    Username = username
+                };
+
+                return Ok(new ApiResponse<IReturnSignInByUser>(response));
+            } else
+            {
+                JWTPayload payload = new()
+                {
+                    UserID = guid.ToString()!
+                };
+                IJWTResponse response = JWTHandler.generateToken(payload, _appConfig.Option.Authentication.JWTKey);
+                CookieResponse.AddTokenCookie(Response, response.Token);
+                return Ok(new ApiResponse<IJWTResponse>(response));
+            }
         }
     }
 }

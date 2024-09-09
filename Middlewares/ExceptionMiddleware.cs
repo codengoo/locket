@@ -23,7 +23,7 @@ namespace locket.Middlewares
 
         private static Task HandleExceptionAsync(HttpContext context, Exception ex)
         {
-            var response = new ApiResponse<string>("An error occurred", null, new { server = ex.Message });
+            var response = new ApiResponse<string>(null, "An error occurred", new { server = ex.Message });
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
